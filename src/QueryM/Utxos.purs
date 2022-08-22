@@ -15,6 +15,7 @@ import Cardano.Types.TransactionUnspentOutput (TransactionUnspentOutput)
 import Cardano.Types.Value (Value)
 import Control.Monad.Reader (withReaderT)
 import Control.Monad.Reader.Trans (ReaderT, asks)
+import Contract.Log (logInfo')
 import Data.Array as Array
 import Data.Bifunctor (bimap)
 import Data.Bitraversable (bisequence)
@@ -147,17 +148,22 @@ getWalletBalance = do
 
 getWalletCollateral :: QueryM (Maybe (Array TransactionUnspentOutput))
 getWalletCollateral = do
+  let prefix = "TESTING "
+  logInfo' $ prefix <> "getWalletCollateral"
   mbCollateralUTxOs <- asks (_.runtime >>> _.wallet) >>= maybe (pure Nothing)
     case _ of
       Nami nami -> liftAff $ callCip30Wallet nami _.getCollateral
       Gero gero -> liftAff $ callCip30Wallet gero _.getCollateral
       Flint flint -> liftAff $ callCip30Wallet flint _.getCollateral
       KeyWallet kw -> do
+        logInfo' $ prefix <> "keywallet found"
         networkId <- asks $ _.config >>> _.networkId
         addr <- liftAff $ (unwrap kw).address networkId
+        logInfo' $ prefix <> "addr " <> show addr
         utxos <- utxosAt addr <#> map unwrap >>> fromMaybe Map.empty
           >>= filterLockedUtxos
         pure $ Array.singleton <$> (unwrap kw).selectCollateral utxos
+  logInfo' $ prefix <> show mbCollateralUTxOs
   for_ mbCollateralUTxOs \collateralUTxOs -> do
     pparams <- asks $ _.runtime >>> _.pparams
     let
