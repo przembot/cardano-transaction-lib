@@ -46,7 +46,7 @@ exports._onWsConnect = ws => fn => () => {
 exports._onWsError = ws => fn => () => {
   const listener = function (event) {
     console.log(event);
-    fn(event.message())();
+    fn(event.message)();
   };
   ws.addEventListener("error", listener);
   ws.finalizers.push(() => {
